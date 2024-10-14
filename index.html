@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Attendance</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        #attendanceForm {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            width: 300px; /* Set a fixed width */
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+        label {
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"] {
+            width: 100%; /* Full width */
+            padding: 10px;
+            border: 2px solid #4CAF50; /* Border color */
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        button {
+            width: 100%; /* Full width */
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049; /* Darker shade on hover */
+        }
+        /* Styling for radio buttons */
+        .radio-group {
+            display: flex;
+            justify-content: space-between; /* Align buttons left and right */
+            margin-bottom: 15px;
+        }
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        input[type="radio"] {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #000;
+            border-radius: 50%;
+            outline: none;
+            cursor: pointer;
+        }
+        input[type="radio"]:checked {
+            background-color: #4CAF50;
+            border-color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <form id="attendanceForm">
+        <h2>Attendance Form</h2>
+        <div id="employeeIdSection">
+            <label for="employeeId" id="employeeIdLabel">Employee ID:</label>
+            <input type="text" id="employeeId" name="employeeId" required>
+        </div>
+        
+        <div id="punchInSection" class="radio-group">
+            <label class="radio-label">
+                <input type="radio" id="punchIn" name="punch" value="Punch In" required> Punch In
+            </label>
+        </div>
+        
+        <div id="punchOutSection" class="radio-group" style="display: none;">
+            <label class="radio-label">
+                <input type="radio" id="punchOut" name="punch" value="Punch Out"> Punch Out
+            </label>
+        </div>
+        
+        <input type="hidden" id="latitude" name="latitude">
+        <input type="hidden" id="longitude" name="longitude">
+        <input type="hidden" id="timestamp" name="timestamp">
+        
+        <button type="submit">Submit Attendance</button>
+    </form>
+
+    <script>
+        // Get Location
+        function getLocation() {
+            return new Promise((resolve, reject) => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            resolve({
+                                latitude: position.coords.latitude,
+                                longitude: position.coords.longitude
+                            });
+                        },
+                        (error) => {
+                            reject(error);
+                        }
+                    );
+                } else {
+                    reject(new Error("Geolocation is not supported by this browser."));
+                }
+            });
+        }
+
+        // Submit Form Data to Google Sheets
+        document.getElementById("attendanceForm").addEventListener("submit", async function(e) {
+            e.preventDefault();
+
+            try {
+                // Get the user's location
+                const location = await getLocation();
+                document.getElementById("latitude").value = location.latitude;
+                document.getElementById("longitude").value = location.longitude;
+                
+                // Get current timestamp
+                const currentTimestamp = new Date().toISOString();
+                document.getElementById("timestamp").value = currentTimestamp;
+                
+                const formData = new FormData(this);
+                const punchInSection = document.getElementById("punchInSection");
+                const punchOutSection = document.getElementById("punchOutSection");
+                const employeeIdLabel = document.getElementById("employeeIdLabel");
+                const employeeIdSection = document.getElementById("employeeIdSection");
+
+                // Send form data to Google Apps Script
+                fetch("https://script.google.com/macros/s/AKfycbzLUp2kiajKKO1xERxpPqLSuItQUfpiXjfk_rC2iuN4uU5PV-gQMvcEI1BQwxcHhMGZ/exec", {  // Replace with your URL
+                    method: "POST",
+                    body: formData
+                }).then(response => response.json())
+                .then(data => {
+                    alert("Attendance recorded successfully.");
+
+                    // If Punch In was selected, hide Employee ID and show Punch Out
+                    const selectedPunch = formData.get("punch");
+                    if (selectedPunch === "Punch In") {
+                        employeeIdSection.style.display = "none"; // Hide Employee ID section
+                        punchInSection.style.display = "none";
+                        punchOutSection.style.display = "flex";
+                    } else {
+                        employeeIdSection.style.display = "block"; // Show Employee ID section
+                        punchInSection.style.display = "flex";
+                        punchOutSection.style.display = "none";
+                    }
+
+                    document.getElementById("attendanceForm").reset();
+                }).catch(error => {
+                    console.error("Error:", error);
+                    alert("Failed to record attendance.");
+                });
+
+            } catch (error) {
+                alert("Error getting location: " + error.message);
+            }
+        });
+    </script>
+</body>
+</html>
